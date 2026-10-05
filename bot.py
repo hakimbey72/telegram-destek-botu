@@ -1,14 +1,28 @@
 import os
+import logging
 import asyncio
 from aiohttp import web
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
+# Log Ayarları
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO
+)
+
+# Bot Bilgileri
 TOKEN = "8113543475:AAGVok833wnF6H2UZ_x8ML9rFSqm_4YJih0"
 ADMIN_GROUP_ID = -5300290442
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Merhaba! Destek hattına hoş geldiniz. Mesajınızı buraya yazabilirsiniz.")
+    user = update.effective_user
+    welcome_text = (
+        f"Merhaba {user.first_name}! 👋\n\n"
+        "Şikayet, öneri veya destek talebinizi bu sohbet üzerinden yazabilirsiniz. "
+        "Ekibimiz en kısa sürede size dönüş yapacaktır."
+    )
+    await update.message.reply_text(welcome_text)
 
 async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == 'private':
@@ -21,7 +35,7 @@ async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text=info_text, parse_mode='Markdown')
         await update.message.forward(chat_id=ADMIN_GROUP_ID)
-        await update.message.reply_text("Mesajınız destek ekibimize iletildi.")
+        await update.message.reply_text("Mesajınız destek ekibimize iletildi. En kısa sürede dönüş yapılacaktır.")
 
 async def handle_admin_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.id == ADMIN_GROUP_ID and update.message.reply_to_message:
@@ -51,11 +65,13 @@ async def handle_ping(request):
     return web.Response(text="Bot 7/24 Aktif!")
 
 async def main():
+    # Application Oluşturma
     application = Application.builder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.ChatType.PRIVATE & ~filters.COMMAND, handle_user_message))
     application.add_handler(MessageHandler(filters.CHAT & ~filters.COMMAND, handle_admin_reply))
 
+    # Render Portu için Web Sunucusu
     app = web.Application()
     app.router.add_get('/', handle_ping)
     runner = web.AppRunner(app)
@@ -65,9 +81,11 @@ async def main():
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
 
+    # Botu Başlatma
     async with application:
         await application.start()
         await application.updater.start_polling()
+        print("Bot ve Web Sunucusu Başarıyla Başlatıldı!")
         await asyncio.Event().wait()
 
 if __name__ == '__main__':
