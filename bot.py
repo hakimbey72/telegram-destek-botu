@@ -67,9 +67,11 @@ async def handle_ping(request):
 async def main():
     # Application Oluşturma
     application = Application.builder().token(TOKEN).build()
+    
+    # Handler'ları Ekleme
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.ChatType.PRIVATE & ~filters.COMMAND, handle_user_message))
-    application.add_handler(MessageHandler(filters.CHAT & ~filters.COMMAND, handle_admin_reply))
+    application.add_handler(MessageHandler(filters.Chat(ADMIN_GROUP_ID) & ~filters.COMMAND, handle_admin_reply))
 
     # Render Portu için Web Sunucusu
     app = web.Application()
